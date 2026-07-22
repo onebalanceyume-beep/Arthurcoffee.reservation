@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Arthur coffee ご予約</title>
+<style>
+  :root{ --accent:#00888c; --ink:#1a1a1a; --soft:#f6f9f9; --line:#e6e6e6; }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:"Hiragino Sans","Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif;background:#f3f3f3;display:flex;justify-content:center;padding:24px 12px;}
+  .wrap{max-width:420px;width:100%;background:#fff;border-radius:20px;overflow:hidden;box-shadow:0 10px 40px rgba(0,0,0,.12);}
+  .header{padding:28px 20px 16px;text-align:center;border-bottom:1px solid var(--line);}
+  .header .logo{font-size:26px;font-weight:700;color:var(--ink);letter-spacing:.02em;}
+  .header .logo span{color:var(--accent);}
+  .header .sub{font-size:12px;color:#999;margin-top:2px;}
+  .hero{padding:18px 20px 8px;}
+  .hero h1{font-size:19px;font-weight:700;color:var(--ink);}
+  .hero p{font-size:12.5px;color:#666;margin-top:6px;line-height:1.7;}
+  .menu-card{margin:16px 20px;border:1px solid var(--line);border-radius:14px;padding:16px;}
+  .menu-card .name{font-size:15px;font-weight:700;color:var(--ink);}
+  .meta{display:flex;gap:10px;margin-top:6px;}
+  .badge{font-size:11px;background:var(--soft);color:var(--accent);padding:3px 9px;border-radius:20px;font-weight:700;border:1px solid var(--accent);}
+  .price{margin-top:10px;font-size:12px;color:#555;}
+  .price b{font-size:22px;color:var(--accent);}
+  .bring{margin-top:10px;font-size:11.5px;color:var(--accent);background:var(--soft);border-left:3px solid var(--accent);padding:8px 10px;border-radius:4px;}
+  .section-title{font-size:12px;font-weight:700;color:var(--accent);letter-spacing:.05em;margin:22px 20px 8px;}
+  .date-scroll{display:flex;gap:8px;margin:0 20px 14px;overflow-x:auto;}
+  .date-card{flex:0 0 68px;text-align:center;border:1px solid var(--line);border-radius:12px;padding:10px 0 8px;background:var(--soft);cursor:pointer;}
+  .date-card .dow{font-size:10px;color:#5fa8ab;}
+  .date-card .dnum{font-size:20px;font-weight:700;color:var(--ink);line-height:1.2;}
+  .date-card .dmonth{font-size:10px;color:#5fa8ab;}
+  .date-card .dremain{font-size:10px;font-weight:700;color:var(--accent);margin-top:4px;}
+  .date-card.active{background:var(--accent);border-color:var(--accent);}
+  .date-card.active .dow,.date-card.active .dmonth,.date-card.active .dnum,.date-card.active .dremain{color:#fff;}
+  .date-card.full{opacity:.4;pointer-events:none;}
+  .date-card.full .dremain{color:#999;}
+  .loading{padding:20px;text-align:center;font-size:12.5px;color:#999;}
+  form{padding:0 20px;}
+  label{display:block;font-size:12px;font-weight:700;color:var(--ink);margin:14px 0 6px;}
+  input[type=text],input[type=email],textarea{width:100%;border:1px solid var(--line);border-radius:8px;padding:10px 12px;font-size:13px;font-family:inherit;}
+  textarea{resize:vertical;min-height:60px;}
+  .radio-row{display:flex;gap:10px;}
+  .radio-row label{display:flex;align-items:center;gap:6px;font-weight:400;font-size:13px;margin:0;}
+  .btn{display:block;width:100%;margin:22px 0 8px;background:var(--accent);color:#fff;text-align:center;padding:14px 0;border-radius:12px;font-size:14.5px;font-weight:700;border:none;letter-spacing:.03em;}
+  .btn:disabled{opacity:.5;}
+  .info-block{margin:18px 20px 26px;font-size:11.5px;color:#555;line-height:1.9;border-top:1px solid var(--line);padding-top:14px;}
+  .info-block .label{font-weight:700;color:var(--ink);border-bottom:1px solid var(--accent);}
+  .footer-note{text-align:center;font-size:10.5px;color:#aaa;padding:0 20px 24px;}
+  .msg{margin:0 20px 10px;font-size:12.5px;padding:10px;border-radius:8px;}
+  .msg.error{background:#fdecec;color:#b23b3b;}
+  .msg.ok{background:#eafaf6;color:var(--accent);}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="header">
+    <div class="logo">Arthur <span>coffee</span></div>
+    <div class="sub">ご予約フォーム</div>
+  </div>
+
+  <div class="hero">
+    <h1>ハンドドリップ体験会</h1>
+    <p>初めての方でも安心して楽しむことができます。</p>
+  </div>
+
+  <div class="menu-card">
+    <div class="name">ハンドドリップ体験会</div>
+    <div class="meta">
+      <span class="badge">70分</span>
+      <span class="badge">定員3組</span>
+    </div>
+    <div class="price"><b>¥3,500</b> / 1人・70分</div>
+    <div class="bring">☕ ご自身の道具・豆のお持ち込みも大歓迎です</div>
+  </div>
+
+  <div class="section-title">日程を選ぶ（毎週土曜日 16:00〜）</div>
+  <div class="date-scroll" id="dateScroll"><div class="loading">読み込み中...</div></div>
+
+  <div id="msg"></div>
+
+  <form id="bookForm">
+    <label>お名前</label>
+    <input type="text" id="name" required>
+
+    <label>メールアドレス</label>
+    <input type="email" id="email" required>
+
+    <label>ご利用は初めてですか？</label>
+    <div class="radio-row">
+      <label><input type="radio" name="firstTime" value="yes" checked> はい（初めて）</label>
+      <label><input type="radio" name="firstTime" value="no"> いいえ（2回目以降）</label>
+    </div>
+
+    <label>備考（任意）</label>
+    <textarea id="notes"></textarea>
+
+    <button type="submit" class="btn" id="submitBtn">この日程で予約する</button>
+  </form>
+
+  <div class="info-block">
+    <div><span class="label">お支払い：</span>現地決済（現金 / クレジットカード / 楽天ペイ）</div>
+    <div><span class="label">お車の場合：</span>医療センター前の有料駐車場をご利用ください</div>
+    <div><span class="label">キャンセル：</span>予約完了メール内のボタンからいつでも可能です</div>
+  </div>
+
+  <div class="footer-note">Arthur coffee ／ 鳥取県米子市車尾4丁目14-13</div>
+</div>
+
+<script>
+  /* ▼▼ ここだけ、GASのデプロイURLに書き換えてください ▼▼ */
+  const GAS_URL = "https://script.google.com/macros/s/AKfycbwcivYpiNv632FCubTvfALqKYZBD8U3g7fCcC3Vf_h-9vqDIb1J1VwPGjCXsHWMs4c/exec";
+  /* ▲▲ ここだけ、GASのデプロイURLに書き換えてください ▲▲ */
+
+  let dates = [];
+  let selectedDate = null;
+
+  async function loadDates(){
+    const el = document.getElementById('dateScroll');
+    try {
+      const res = await fetch(GAS_URL + '?api=dates');
+      dates = await res.json();
+      renderDates();
+    } catch (err) {
+      el.innerHTML = '<div class="loading">日程の読み込みに失敗しました。時間をおいて再読み込みしてください。</div>';
+    }
+  }
+
+  function renderDates(){
+    const el = document.getElementById('dateScroll');
+    el.innerHTML = '';
+    dates.forEach(d => {
+      const div = document.createElement('div');
+      const isFull = d.remaining <= 0;
+      div.className = 'date-card' + (isFull ? ' full' : '');
+      div.innerHTML =
+        '<div class="dow">SAT</div>' +
+        '<div class="dnum">' + parseInt(d.date.split('-')[2]) + '</div>' +
+        '<div class="dmonth">' + parseInt(d.date.split('-')[1]) + '月</div>' +
+        '<div class="dremain">' + (isFull ? '満員' : '残り' + d.remaining + '組') + '</div>';
+      if (!isFull) {
+        div.onclick = () => {
+          selectedDate = d.date;
+          document.querySelectorAll('.date-card').forEach(c => c.classList.remove('active'));
+          div.classList.add('active');
+        };
+      }
+      el.appendChild(div);
+    });
+    const firstAvailableIdx = dates.findIndex(d => d.remaining > 0);
+    if (firstAvailableIdx >= 0) {
+      selectedDate = dates[firstAvailableIdx].date;
+      el.children[firstAvailableIdx].classList.add('active');
+    }
+  }
+  loadDates();
+
+  document.getElementById('bookForm').addEventListener('submit', async function(e){
+    e.preventDefault();
+    const msg = document.getElementById('msg');
+    msg.innerHTML = '';
+
+    if (!selectedDate) {
+      msg.innerHTML = '<div class="msg error">日程を選択してください</div>';
+      return;
+    }
+
+    const btn = document.getElementById('submitBtn');
+    btn.disabled = true;
+    btn.textContent = '送信中...';
+
+    const body = new URLSearchParams({
+      date: selectedDate,
+      name: document.getElementById('name').value,
+      email: document.getElementById('email').value,
+      firstTime: document.querySelector('input[name=firstTime]:checked').value,
+      notes: document.getElementById('notes').value
+    });
+
+    try {
+      const res = await fetch(GAS_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: body.toString()
+      });
+      const result = await res.json();
+      btn.disabled = false;
+      btn.textContent = 'この日程で予約する';
+      if (result.ok) {
+        msg.innerHTML = '<div class="msg ok">ご予約が確定しました。確認メールをご確認ください。</div>';
+        document.getElementById('bookForm').style.display = 'none';
+      } else {
+        msg.innerHTML = '<div class="msg error">' + result.message + '</div>';
+      }
+    } catch (err) {
+      btn.disabled = false;
+      btn.textContent = 'この日程で予約する';
+      msg.innerHTML = '<div class="msg error">送信に失敗しました。時間をおいて再度お試しください。</div>';
+    }
+  });
+</script>
+</body>
+</html>
