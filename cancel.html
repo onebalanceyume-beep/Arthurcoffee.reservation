@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>ご予約キャンセル - Arthur coffee</title>
+<style>
+  :root{ --accent:#00888c; --ink:#1a1a1a; --soft:#f6f9f9; --line:#e6e6e6; --danger:#b23b3b; }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  html,body{overflow-x:hidden;width:100%;height:100%;}
+  body{
+    font-family:"Hiragino Sans","Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif;
+    background:#f3f3f3;
+    min-height:100dvh;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding:24px 16px;
+  }
+  .wrap{max-width:420px;width:100%;background:#fff;border-radius:20px;overflow:hidden;box-shadow:0 10px 40px rgba(0,0,0,.12);}
+  .header{padding:28px 20px 16px;text-align:center;border-bottom:1px solid var(--line);}
+  .header .logo{font-size:24px;font-weight:700;color:var(--ink);letter-spacing:.02em;}
+  .header .logo span{color:var(--accent);}
+  .box{padding:32px 24px 28px;text-align:center;}
+  .loading{font-size:13px;color:#999;padding:20px 0;}
+  .title{font-size:18px;font-weight:700;color:var(--ink);line-height:1.6;margin-bottom:10px;}
+  .sub{font-size:13px;color:#666;line-height:1.8;margin-bottom:28px;}
+  .detail-card{background:var(--soft);border:1px solid var(--line);border-radius:14px;padding:18px;text-align:left;margin-bottom:26px;overflow:hidden;}
+  .detail-row{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;padding:6px 0;flex-wrap:wrap;}
+  .detail-row .k{font-size:11.5px;color:#888;font-weight:700;flex-shrink:0;padding-top:2px;}
+  .detail-row .v{font-size:14px;color:var(--ink);font-weight:700;text-align:right;word-break:break-word;min-width:0;flex:1;}
+  .btn-danger{
+    display:block;width:100%;padding:16px 0;border-radius:14px;border:none;
+    background:var(--danger);color:#fff;font-size:15px;font-weight:700;
+    letter-spacing:.03em;cursor:pointer;
+  }
+  .btn-danger:disabled{opacity:.5;}
+  .icon-circle{width:64px;height:64px;border-radius:50%;background:var(--soft);border:2px solid var(--accent);display:flex;align-items:center;justify-content:center;margin:0 auto 20px;}
+  .icon-circle svg{width:32px;height:32px;}
+  .msg{margin-top:16px;font-size:13px;color:var(--accent);font-weight:700;}
+  .msg.error{color:var(--danger);}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="header">
+    <div class="logo">Arthur <span>coffee</span></div>
+  </div>
+  <div class="box" id="box">
+    <div class="loading">読み込み中...</div>
+  </div>
+</div>
+
+<script>
+  /* ▼▼ GASのデプロイURL ▼▼ */
+  const GAS_URL = "https://script.google.com/macros/s/AKfycbwcivYpiNv632FCubTvfALqKYZBD8U3g7fCcC3Vf_h-9vqDIb1J1VwPGjCXsHWMs4c/exec";
+  /* ▲▲ GASのデプロイURL ▲▲ */
+
+  const params = new URLSearchParams(location.search);
+  const token = params.get('token');
+  const box = document.getElementById('box');
+
+  async function init(){
+    if (!token) {
+      renderNotFound();
+      return;
+    }
+    try {
+      const res = await fetch(GAS_URL + '?api=cancelInfo&token=' + encodeURIComponent(token));
+      const info = await res.json();
+      if (!info.found) {
+        renderNotFound();
+      } else if (info.status === 'cancelled') {
+        renderAlreadyCancelled();
+      } else {
+        renderConfirm(info);
+      }
+    } catch (err) {
+      box.innerHTML = '<div class="msg error">読み込みに失敗しました。時間をおいて再度お試しください。</div>';
+    }
+  }
+
+  function renderNotFound(){
+    box.innerHTML =
+      '<div class="title">予約情報が見つかりません</div>' +
+      '<div class="sub">URLをご確認いただくか、お店にLINEでご連絡ください。</div>';
+  }
+
+  function renderAlreadyCancelled(){
+    box.innerHTML =
+      '<div class="icon-circle"><svg viewBox="0 0 24 24" fill="none" stroke="#00888c" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg></div>' +
+      '<div class="title">このご予約は<br>既にキャンセル済みです</div>';
+  }
+
+  function renderConfirm(info){
+    box.innerHTML =
+      '<div class="title">ご予約の<br>キャンセル</div>' +
+      '<div class="sub">内容をご確認のうえ、キャンセルを確定してください</div>' +
+      '<div class="detail-card">' +
+        '<div class="detail-row"><div class="k">日時</div><div class="v">' + info.dateLabel + ' 16:00〜</div></div>' +
+        '<div class="detail-row"><div class="k">お名前</div><div class="v">' + info.name + ' 様</div></div>' +
+      '</div>' +
+      '<button class="btn-danger" id="cancelBtn">キャンセルを確定する</button>' +
+      '<div class="msg" id="msg"></div>';
+
+    document.getElementById('cancelBtn').addEventListener('click', async function(){
+      const btn = this;
+      btn.disabled = true;
+      btn.textContent = '処理中...';
+      const msg = document.getElementById('msg');
+      try {
+        const res = await fetch(GAS_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: new URLSearchParams({ action: 'cancel', token: token }).toString()
+        });
+        const result = await res.json();
+        if (result.ok) {
+          box.innerHTML =
+            '<div class="icon-circle"><svg viewBox="0 0 24 24" fill="none" stroke="#00888c" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg></div>' +
+            '<div class="title">キャンセルが<br>完了しました</div>' +
+            '<div class="sub">またのご利用をお待ちしております</div>';
+        } else {
+          btn.disabled = false;
+          btn.textContent = 'キャンセルを確定する';
+          msg.textContent = result.message;
+          msg.className = 'msg error';
+        }
+      } catch (err) {
+        btn.disabled = false;
+        btn.textContent = 'キャンセルを確定する';
+        msg.textContent = '通信に失敗しました。時間をおいて再度お試しください。';
+        msg.className = 'msg error';
+      }
+    });
+  }
+
+  init();
+</script>
+</body>
+</html>
