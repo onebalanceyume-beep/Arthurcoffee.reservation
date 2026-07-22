@@ -1,8 +1,9 @@
 <!DOCTYPE html>
-<html>
+<html lang="ja">
 <head>
-<base target="_top">
+<meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Arthur coffee ご予約</title>
 <style>
   :root{ --accent:#00888c; --ink:#1a1a1a; --soft:#f6f9f9; --line:#e6e6e6; }
   *{box-sizing:border-box;margin:0;padding:0;}
@@ -33,6 +34,7 @@
   .date-card.active .dow,.date-card.active .dmonth,.date-card.active .dnum,.date-card.active .dremain{color:#fff;}
   .date-card.full{opacity:.4;pointer-events:none;}
   .date-card.full .dremain{color:#999;}
+  .loading{padding:20px;text-align:center;font-size:12.5px;color:#999;}
   form{padding:0 20px;}
   label{display:block;font-size:12px;font-weight:700;color:var(--ink);margin:14px 0 6px;}
   input[type=text],input[type=email],textarea{width:100%;border:1px solid var(--line);border-radius:8px;padding:10px 12px;font-size:13px;font-family:inherit;}
@@ -87,7 +89,7 @@
   </div>
 
   <div class="section-title">日程を選ぶ（毎週土曜日 16:00〜）</div>
-  <div class="date-scroll" id="dateScroll"></div>
+  <div class="date-scroll" id="dateScroll"><div class="loading">読み込み中...</div></div>
 
   <div id="msg"></div>
 
@@ -153,8 +155,23 @@
 </div>
 
 <script>
-  const dates = <?= dates ?>;
+  /* ▼▼ ここだけ、GASのデプロイURLに書き換えてください ▼▼ */
+  const GAS_URL = "https://script.google.com/macros/s/AKfycbwcivYpiNv632FCubTvfALqKYZBD8U3g7fCcC3Vf_h-9vqDIb1J1VwPGjCXsHWMs4c/exec";
+  /* ▲▲ ここだけ、GASのデプロイURLに書き換えてください ▲▲ */
+
+  let dates = [];
   let selectedDate = null;
+
+  async function loadDates(){
+    const el = document.getElementById('dateScroll');
+    try {
+      const res = await fetch(GAS_URL + '?api=dates');
+      dates = await res.json();
+      renderDates();
+    } catch (err) {
+      el.innerHTML = '<div class="loading">日程の読み込みに失敗しました。時間をおいて再読み込みしてください。</div>';
+    }
+  }
 
   function renderDates(){
     const el = document.getElementById('dateScroll');
@@ -183,9 +200,26 @@
       el.children[firstAvailableIdx].classList.add('active');
     }
   }
-  renderDates();
+  loadDates();
 
-  document.getElementById('bookForm').addEventListener('submit', function(e){
+  function showCompleteScreen_(dateStr, name){
+    const target = dates.find(d => d.date === dateStr);
+    const label = target ? target.label : dateStr;
+    document.getElementById('completeDate').textContent = label + ' 16:00〜';
+    document.getElementById('completeName').textContent = name + ' 様';
+    document.getElementById('formSection').style.display = 'none';
+    document.getElementById('completeWrap').classList.add('show');
+  }
+
+  document.getElementById('closeCompleteBtn').addEventListener('click', function(){
+    document.getElementById('completeWrap').classList.remove('show');
+    document.getElementById('formSection').style.display = '';
+    document.getElementById('bookForm').reset();
+    document.getElementById('msg').innerHTML = '';
+    loadDates();
+  });
+
+  document.getElementById('bookForm').addEventListener('submit', async function(e){
     e.preventDefault();
     const msg = document.getElementById('msg');
     msg.innerHTML = '';
@@ -199,43 +233,33 @@
     btn.disabled = true;
     btn.textContent = '送信中...';
 
-    const form = {
+    const body = new URLSearchParams({
       date: selectedDate,
       name: document.getElementById('name').value,
       email: document.getElementById('email').value,
-      firstTime: document.querySelector('input[name=firstTime]:checked').value === 'yes',
+      firstTime: document.querySelector('input[name=firstTime]:checked').value,
       notes: document.getElementById('notes').value
-    };
+    });
 
-    google.script.run
-      .withSuccessHandler(function(res){
-        btn.disabled = false;
-        btn.textContent = 'この日程で予約する';
-        if (res.ok) {
-          showCompleteScreen_(form.date, form.name);
-        } else {
-          msg.innerHTML = '<div class="msg error">' + res.message + '</div>';
-        }
-      })
-      .withFailureHandler(function(err){
-        btn.disabled = false;
-        btn.textContent = 'この日程で予約する';
-        msg.innerHTML = '<div class="msg error">送信に失敗しました。時間をおいて再度お試しください。</div>';
-      })
-      .bookAppointment(form);
-  });
-
-  function showCompleteScreen_(dateStr, name){
-    const target = dates.find(d => d.date === dateStr);
-    const label = target ? target.label : dateStr;
-    document.getElementById('completeDate').textContent = label + ' 16:00〜';
-    document.getElementById('completeName').textContent = name + ' 様';
-    document.getElementById('formSection').style.display = 'none';
-    document.getElementById('completeWrap').classList.add('show');
-  }
-
-  document.getElementById('closeCompleteBtn').addEventListener('click', function(){
-    location.reload();
+    try {
+      const res = await fetch(GAS_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: body.toString()
+      });
+      const result = await res.json();
+      btn.disabled = false;
+      btn.textContent = 'この日程で予約する';
+      if (result.ok) {
+        showCompleteScreen_(selectedDate, document.getElementById('name').value);
+      } else {
+        msg.innerHTML = '<div class="msg error">' + result.message + '</div>';
+      }
+    } catch (err) {
+      btn.disabled = false;
+      btn.textContent = 'この日程で予約する';
+      msg.innerHTML = '<div class="msg error">送信に失敗しました。時間をおいて再度お試しください。</div>';
+    }
   });
 </script>
 </body>
